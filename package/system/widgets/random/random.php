@@ -10,8 +10,6 @@ class widgetRandom extends cmsWidget {
             return $this->getContentTypeFields($this->request->get('content_type'));
         }
 
-        $model = cmsCore::getModel('content');
-
         // Получаем настройки
         $ctype_name = $this->getOption('ctype_name');
         $image_field = $this->getOption('image_field');
@@ -39,13 +37,25 @@ class widgetRandom extends cmsWidget {
         }
 
         // Получаем элементы из типа контента
-        $items = $this->getContentItems($model, $ctype_name, $image_field, $text_field, $title_field, $limit, $is_random);
+        $items = $this->getContentItems($ctype_name, $image_field, $text_field, $title_field, $limit, $is_random);
 
         $this->options['items'] = $items;
         $this->options['button_text'] = $this->getOption('button_text', 'Получить случайный элемент');
+        $this->options['event_name'] = $this->getOption('event_name', '');
+        $this->options['title_color'] = $this->getOption('title_color', '#000000');
+        $this->options['text_color'] = $this->getOption('text_color', '#333333');
+        $this->options['button_color'] = $this->getOption('button_color', '#3498db');
+        $this->options['button_text_color'] = $this->getOption('button_text_color', '#ffffff');
+        $this->options['enable_background_image'] = $this->getOption('enable_background_image', false);
+        $this->options['background_image'] = $this->getOption('background_image', '');
+        $this->options['background_size'] = $this->getOption('background_size', 'cover');
+        $this->options['background_opacity'] = $this->getOption('background_opacity', 50);
+        $this->options['background_overlay'] = $this->getOption('background_overlay', '#000000');
+        $this->options['limit_mode'] = $this->getOption('limit_mode', 'none');
+        $this->options['limit_interval'] = $this->getOption('limit_interval', 5);
 
         // Проверяем ограничения
-        if (!empty($this->options['limit_mode']) && $this->options['limit_mode'] != 'none') {
+        if ($this->options['limit_mode'] != 'none') {
             $this->checkLimits();
         }
 
@@ -54,14 +64,17 @@ class widgetRandom extends cmsWidget {
         return $this->options;
     }
 
-    private function getContentItems($model, $ctype_name, $image_field, $text_field, $title_field, $limit, $is_random) {
+    private function getContentItems($ctype_name, $image_field, $text_field, $title_field, $limit, $is_random) {
 
         if (!$ctype_name) {
             return array();
         }
 
+        $model = cmsCore::getModel('content');
+
         $model->filterEqual('type', $ctype_name);
         $model->filterIsNull('is_deleted');
+        $model->filterEqual('is_pub', 1);
 
         // Сортировка
         if ($is_random) {
@@ -108,15 +121,20 @@ class widgetRandom extends cmsWidget {
     private function parseImage($image) {
 
         if (is_array($image)) {
-            return !empty($image['url']) ? $image['url'] : '';
+            return !empty($image['url']) ? $image['url'] : (isset($image['original']) ? $image['original'] : '');
         }
 
         if (is_string($image)) {
             // JSON
             if (strpos($image, '{') === 0) {
                 $data = json_decode($image, true);
-                if (!empty($data['url'])) {
-                    return $data['url'];
+                if (is_array($data)) {
+                    if (!empty($data['url'])) {
+                        return $data['url'];
+                    }
+                    if (!empty($data['original'])) {
+                        return $data['original'];
+                    }
                 }
             }
             // YAML
@@ -163,7 +181,7 @@ class widgetRandom extends cmsWidget {
     }
 
     private function checkLimits() {
-        $interval_minutes = !empty($this->options['limit_interval']) ? (int)$this->options['limit_interval'] : 5;
+        $interval_minutes = $this->options['limit_interval'];
         $interval_seconds = $interval_minutes * 60;
         $now = time();
 

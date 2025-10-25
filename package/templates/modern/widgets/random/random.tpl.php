@@ -1,5 +1,5 @@
 <?php
-$this->addCSS($this->getCSSFileName('random'));
+$this->addCSS('templates/modern/widgets/random/random.css');
 
 $backgroundStyle = '';
 $backgroundImage = '';
